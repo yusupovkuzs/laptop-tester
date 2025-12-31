@@ -1,0 +1,8 @@
+psutil
+pyusb
+sounddevice
+numpy
+psycopg2-binary
+soundfile
+psycopg2-binary
+sqlalchemy

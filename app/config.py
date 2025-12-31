@@ -1,0 +1,1 @@
+DATABASE_URL = "postgresql://postgres:132415@localhost:5432/laptop_tester"
