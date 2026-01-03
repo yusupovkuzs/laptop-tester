@@ -28,51 +28,6 @@ class MainWindow(tk.Tk):
         self.create_session_controls()
         self.create_log()
 
-        # self.btn_load = tk.Button(
-        #     self,
-        #     text="Показать информацию о ноутбуке",
-        #     command=self.load_system_info
-        # )
-        # self.btn_load.pack(pady=10)
-
-        # self.btn_start_tests = tk.Button(
-        #     self,
-        #     text="Начать тестирование",
-        #     command=self.start_tests
-        # )
-        # self.btn_start_tests.pack(pady=10)
-
-        # self.btn_finish_tests = tk.Button(
-        #     self,
-        #     text="Завершить тестирование",
-        #     command=self.finish_tests
-        # )
-        # self.btn_finish_tests.pack(pady=10)
-
-        # self.btn_usb = tk.Button(
-        #     self,
-        #     text="Тест USB",
-        #     command=self.run_usb_test
-        # )
-        # self.btn_usb.pack(pady=5)
-
-        # self.audio_label = tk.Label(self, text="Аудио тест")
-        # self.audio_label.pack(pady=5)
-
-        # self.devices = list_output_devices()
-        # self.device_map = {f"{d['name']} ({d['hostapi']})": d["id"] for d in self.devices}
-        # self.selected_device = tk.StringVar()
-        # self.selected_device.set(next(iter(self.device_map)))
-        # self.device_menu = tk.OptionMenu(self, self.selected_device, *self.device_map.keys())
-        # self.device_menu.pack(pady=5)
-        # self.btn_left = tk.Button(self, text="Левый канал", command=lambda: self.play_audio("left.wav", "LEFT"))
-        # self.btn_left.pack(pady=2)
-        # self.btn_right = tk.Button(self, text="Правый канал", command=lambda: self.play_audio("right.wav", "RIGHT"))
-        # self.btn_right.pack(pady=2)
-
-        # self.text_area = scrolledtext.ScrolledText(self, wrap=tk.WORD, width=110, height=35)
-        # self.text_area.pack(padx=10, pady=10)
-
     def create_header(self):
         header = tk.Label(
             self,
@@ -125,8 +80,6 @@ class MainWindow(tk.Tk):
 
 
     def start_tests(self):
-        # self.controller = TestController()
-        # self.text_area.insert(tk.END, "Сессия тестирования начата\n")
         self.controller = TestController()
         self.log("Сессия начата")
 
@@ -147,6 +100,17 @@ class MainWindow(tk.Tk):
             pady=10
         )
         frame.pack(fill="x", padx=20, pady=10)
+
+        # --- HARDWARE INFO ---
+        self.btn_info = tk.Button(
+            frame,
+            text="Загрузить информацию о системе",
+            width=30,
+            bg=BTN_MAIN,
+            fg="white",
+            command=self.load_system_info
+        )
+        self.btn_info.grid(row=0, column=1, padx=5, pady=5, sticky="e")
 
         # --- USB ---
         self.btn_usb = tk.Button(
@@ -267,7 +231,6 @@ class MainWindow(tk.Tk):
         self.text_area.tag_config(color, foreground=color)
         self.text_area.see(tk.END)
 
-    
     @staticmethod
     def format_info(info: dict) -> str:
         lines = []
