@@ -5,6 +5,7 @@ from app.hardware.usb_test import run_usb_tests
 from app.audio.audio_test import play_sample, list_output_devices
 import threading
 from app.controller.test_controller import TestController
+from tkinter import messagebox
 
 # Colors
 BG_COLOR = "#F4F6F8"
@@ -203,11 +204,23 @@ class MainWindow(tk.Tk):
 
     def play_audio(self, sample_file, channel):
         device_id = self.device_map[self.selected_device.get()]
+        if channel == "LEFT":
+            tmp_text = "левом"
+        else:
+            tmp_text = "правом"
         def _play():
             try:
                 play_sample(sample_file, device=device_id)
-                self.text_area.insert(tk.END, f"Аудио тест OK: {sample_file}\n")
-                self.controller.save_audio(str(self.selected_device), channel, True)
+                self.text_area.insert(tk.END, f"Вопсроизводится: {sample_file}\n")
+                result = messagebox.askyesno(
+                    title="Аудио тест",
+                    message=f"Слышен ли звук в {tmp_text} канале?"
+                )
+                if not result:
+                    err_user = "Пользователь не услышал звук"
+                    self.controller.save_audio(str(self.selected_device.get()), channel, False, err_user)
+                else:
+                    self.controller.save_audio(str(self.selected_device.get()), channel, True)
             except Exception as e:
                 self.text_area.insert(tk.END, f"Ошибка аудио: {e}\n")
                 self.controller.save_audio(str(self.selected_device), channel, False, str(e))
