@@ -3,4 +3,4 @@ python -m app.main
 
 -- exe --
 pip install pyinstaller
-pyinstaller --onefile -w app/main.py
+pyinstaller --onefile -w   --add-data "app/audio/samples/left.wav;app/audio/samples"   --add-data "app/audio/samples/right.wav;app/audio/samples"   app/main.py

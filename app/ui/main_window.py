@@ -174,7 +174,7 @@ class MainWindow(tk.Tk):
         self.btn_right.grid(row=3, column=1, padx=5, pady=10)
 
     def load_system_info(self):
-        self.text_area.delete("1.0", tk.END)
+        # self.text_area.delete("1.0", tk.END)
         info = collect_all_info()
         self.text_area.insert(tk.END, self.format_info(info))
 
@@ -203,6 +203,8 @@ class MainWindow(tk.Tk):
             self.controller.save_usb(res)
 
     def play_audio(self, sample_file, channel):
+        self.text_area.insert(tk.END, "=== AUDIO ТЕСТ ===\n")
+        
         device_id = self.device_map[self.selected_device.get()]
         if channel == "LEFT":
             tmp_text = "левом"
@@ -211,7 +213,7 @@ class MainWindow(tk.Tk):
         def _play():
             try:
                 play_sample(sample_file, device=device_id)
-                self.text_area.insert(tk.END, f"Вопсроизводится: {sample_file}\n")
+                self.text_area.insert(tk.END, f"\nВопсроизводится: {sample_file}\n")
                 result = messagebox.askyesno(
                     title="Аудио тест",
                     message=f"Слышен ли звук в {tmp_text} канале?"
@@ -278,8 +280,8 @@ class MainWindow(tk.Tk):
         for net in info["network"]:
             lines.append(f"{net['interface']}: {net['ip_address']}")
 
-        lines.append("\n=== GPU ===")
-        for gpu in info["gpu"]:
-            lines.append(gpu)
+        # lines.append("\n=== GPU ===")
+        # for gpu in info["gpu"]:
+        #     lines.append(gpu)
 
         return "\n".join(lines)
