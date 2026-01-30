@@ -1,37 +1,39 @@
 from sqlalchemy import (
-    Table, Column, Integer, Text, Boolean,
-    ForeignKey, MetaData, TIMESTAMP
+    Table, Column, Text, Integer, Boolean, MetaData,
+    TIMESTAMP, CheckConstraint
 )
+from sqlalchemy.sql import func
 
 metadata = MetaData()
 
+# ------------------- Сессии -------------------
 test_sessions = Table(
     "test_sessions", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("laptop_serial", Text),
-    Column("started_at", TIMESTAMP),
-    Column("finished_at", TIMESTAMP),
-    Column("overall_status", Text)
+    Column("laptop_serial", Text, primary_key=True),
+    Column("tester_name", Text, nullable=False),
+    Column("finished_at", TIMESTAMP, server_default=func.now()),
+    Column("overall_status", Text, nullable=False),
+    CheckConstraint("overall_status IN ('PASS','FAIL','CANCELLED')", name="check_overall_status")
 )
 
+# ------------------- USB тесты -------------------
 usb_tests = Table(
     "usb_tests", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("session_id", Integer, ForeignKey("test_sessions.id")),
-    Column("drive", Text),
-    Column("write_speed_mb_s", Integer),
-    Column("read_speed_mb_s", Integer),
+    Column("laptop_serial", Text, primary_key=True),  # привязка по серийному номеру
     Column("checksum_ok", Boolean),
-    Column("status", Text),
-    Column("error", Text)
+    Column("status", Text, nullable=False),
+    Column("error", Text),
+    CheckConstraint("status IN ('PASS','FAIL')", name="check_usb_status")
 )
 
+# ------------------- Аудио тесты -------------------
 audio_tests = Table(
     "audio_tests", metadata,
-    Column("id", Integer, primary_key=True),
-    Column("session_id", Integer, ForeignKey("test_sessions.id")),
+    Column("laptop_serial", Text, primary_key=True),  # привязка по серийному номеру
     Column("device_name", Text),
-    Column("channel", Text),
-    Column("status", Text),
-    Column("error", Text)
+    Column("left_status", Text),
+    Column("right_status", Text),
+    Column("error", Text),
+    CheckConstraint("left_status IN ('PASS','FAIL')", name="check_audio_left_status"),
+    CheckConstraint("right_status IN ('PASS','FAIL')", name="check_audio_right_status")
 )

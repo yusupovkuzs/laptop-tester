@@ -1,51 +1,79 @@
-from sqlalchemy import insert, update
-from app.db.connection import engine
+from sqlalchemy.dialects.postgresql import insert
+from app.db.connection import SessionLocal, engine
 from app.db.models import test_sessions, usb_tests, audio_tests
-from datetime import datetime
+from app.db.models import metadata, test_sessions, usb_tests, audio_tests
 
-def create_session(serial=None):
-    with engine.begin() as conn:
-        result = conn.execute(
-            insert(test_sessions).values(
-                laptop_serial=serial,
-                started_at=datetime.utcnow()
-            ).returning(test_sessions.c.id)
+# Сохранение результатов USB теста
+def save_usb_test(laptop_serial, checksum_ok, status, error=None):
+    session = SessionLocal()
+    try:
+        stmt = insert(usb_tests).values(
+            laptop_serial=laptop_serial,
+            checksum_ok=checksum_ok,
+            status=status,
+            error=error
+        ).on_conflict_do_update(
+            index_elements=['laptop_serial'],  # по какому ключу обновлять
+            set_={
+                "checksum_ok": checksum_ok,
+                "status": status,
+                "error": error
+            }
         )
-        return result.scalar()
+        session.execute(stmt)
+        session.commit()
+    finally:
+        session.close()
 
-def finish_session(session_id, status):
-    with engine.begin() as conn:
-        conn.execute(
-            update(test_sessions)
-            .where(test_sessions.c.id == session_id)
-            .values(
-                finished_at=datetime.utcnow(),
-                overall_status=status
-            )
+# Сохранение результатов аудио теста
+def save_audio_test(laptop_serial, device_name, left_status, right_status, error=None):
+    session = SessionLocal()
+    try:
+        stmt = insert(audio_tests).values(
+            laptop_serial=laptop_serial,
+            device_name=device_name,
+            left_status=left_status,
+            right_status=right_status,
+            error=error
+        ).on_conflict_do_update(
+            index_elements=['laptop_serial'],
+            set_={
+                "device_name": device_name,
+                "left_status": left_status,
+                "right_status": right_status,
+                "error": error
+            }
         )
+        session.execute(stmt)
+        session.commit()
+    finally:
+        session.close()
 
-def save_usb_test(session_id, result):
-    with engine.begin() as conn:
-        conn.execute(
-            insert(usb_tests).values(
-                session_id=session_id,
-                drive=result.get("drive"),
-                write_speed_mb_s=result.get("write_speed_mb_s"),
-                read_speed_mb_s=result.get("read_speed_mb_s"),
-                checksum_ok=result.get("checksum_match"),
-                status="PASS" if result.get("status") == "OK" else "FAIL",
-                error=result.get("error")
-            )
+# Завершение сессии с итоговым результатом
+def finish_test_session(laptop_serial, tester_name, overall_status):
+    session = SessionLocal()
+    try:
+        stmt = insert(test_sessions).values(
+            laptop_serial=laptop_serial,
+            tester_name=tester_name,
+            overall_status=overall_status
+        ).on_conflict_do_update(
+            index_elements=['laptop_serial'],
+            set_={
+                "tester_name": tester_name,
+                "overall_status": overall_status
+            }
         )
+        session.execute(stmt)
+        session.commit()
+    finally:
+        session.close()
 
-def save_audio_test(session_id, device, channel, ok, error=None):
-    with engine.begin() as conn:
-        conn.execute(
-            insert(audio_tests).values(
-                session_id=session_id,
-                device_name=device,
-                channel=channel,
-                status="PASS" if ok else "FAIL",
-                error=error
-            )
-        )
+def get_session_by_serial(laptop_serial):
+    return None  # Заглушка для функции
+
+def get_all_sessions():
+    return []  # Заглушка для функции
+
+
+
