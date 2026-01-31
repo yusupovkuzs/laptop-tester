@@ -1,29 +1,29 @@
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import delete, select
 from app.db.connection import SessionLocal, engine
 from app.db.models import test_sessions, usb_tests, audio_tests
 from app.db.models import metadata, test_sessions, usb_tests, audio_tests
 
 # Сохранение результатов USB теста
-def save_usb_test(laptop_serial, checksum_ok, status, error=None):
-    session = SessionLocal()
-    try:
-        stmt = insert(usb_tests).values(
-            laptop_serial=laptop_serial,
-            checksum_ok=checksum_ok,
-            status=status,
-            error=error
-        ).on_conflict_do_update(
-            index_elements=['laptop_serial'],  # по какому ключу обновлять
-            set_={
-                "checksum_ok": checksum_ok,
-                "status": status,
-                "error": error
-            }
+def save_usb_test(laptop_serial,  usb_results: list[dict]):
+    with engine.begin() as conn:
+        # Удаляем старые тесты этого ноутбука
+        conn.execute(
+            delete(usb_tests).where(usb_tests.c.laptop_serial == laptop_serial)
         )
-        session.execute(stmt)
-        session.commit()
-    finally:
-        session.close()
+
+        # Добавляем новые
+        for usb in usb_results:
+            conn.execute(
+                usb_tests.insert().values(
+                    laptop_serial=laptop_serial,
+                    drive=usb["drive"],
+                    write_speed=usb["write_speed"],
+                    read_speed=usb["read_speed"],
+                    status=usb["status"],
+                    error=usb["error"],
+                )
+            )
 
 # Сохранение результатов аудио теста
 def save_audio_test(laptop_serial, device_name, left_status, right_status, error=None):
@@ -70,10 +70,25 @@ def finish_test_session(laptop_serial, tester_name, overall_status):
         session.close()
 
 def get_session_by_serial(laptop_serial):
-    return None  # Заглушка для функции
+    with SessionLocal() as db:
+        session_row = db.execute(
+            test_sessions.select().where(test_sessions.c.laptop_serial == laptop_serial)
+        ).mappings().first()
+
+        audio_rows = db.execute(
+            audio_tests.select().where(audio_tests.c.laptop_serial == laptop_serial)
+        ).mappings().all()
+
+        usb_rows = db.execute(
+            usb_tests.select().where(usb_tests.c.laptop_serial == laptop_serial)
+        ).mappings().all()
+
+    return session_row, audio_rows, usb_rows
 
 def get_all_sessions():
-    return []  # Заглушка для функции
+    with engine.connect() as conn:
+        result = conn.execute(select(test_sessions)).mappings().all()
+        return result
 
 
 

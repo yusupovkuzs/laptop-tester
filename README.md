@@ -1,13 +1,11 @@
 pip install -r requirements.txt
+Change DATABASE_DIR in config.py
+uncomment init_db in main.py for the first run
 python -m app.main
 
 -- exe --
-pip install pyinstaller
 pyinstaller --onefile -w --add-data "app/audio/samples/left.wav;app/audio/samples" --add-data "app/audio/samples/right.wav;app/audio/samples" app/main.py
 
 -- TODO --
 
-1. добавлять в usb_tests и audio_test несколько полей для одного серийника
-2. подумать что выводить в админке
-
-final: изменить requirements.txt и удалить ненужные файлы
+1. design admin tables

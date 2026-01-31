@@ -1,10 +1,9 @@
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 
 from app.controller.test_session import TestSession
 from app.hardware.usb_test import run_usb_tests
 from app.audio.audio_test import play_sample, list_output_devices
-# from app.db.repository import commit_session_to_db
 import threading
 from tkinter import messagebox
 from app.db.repository import finish_test_session, save_usb_test, save_audio_test, get_all_sessions, get_session_by_serial 
@@ -56,10 +55,184 @@ class MainWindow(ctk.CTk):
 
         if login == "admin" and password == "admin":  # временно
             messagebox.showinfo("OK", "Вход выполнен")
-            admin_window = AdminPanel(self)
-            admin_window.grab_set()
+            self.show_admin_screen()
         else:
             messagebox.showerror("Ошибка", "Неверные данные")
+    
+    def show_admin_screen(self):
+        self.clear()
+
+        ctk.CTkLabel(self, text="Админ панель", font=("Arial", 20)).pack(pady=20)
+
+        ctk.CTkButton(self, text="Показать все протестированные устройства", command=self.show_all_devices).pack(pady=10)
+        self.search_entry = ctk.CTkEntry(self, placeholder_text="Введите серийный номер")
+        self.search_entry.pack(pady=5)
+
+        self.search_btn = ctk.CTkButton(
+            self,
+            text="Найти устройство",
+            command=self.search_device
+        )
+        self.search_btn.pack(pady=5)
+
+        ctk.CTkButton(self, text="Выйти", command=self.show_role_selection).pack(pady=20)
+    
+    def show_all_devices(self):
+        sessions = get_all_sessions()
+
+        if not sessions:
+            messagebox.showinfo("Информация", "Записей нет")
+            return
+
+        window = ctk.CTkToplevel(self)
+        window.title("Все протестированные устройства")
+        window.geometry("800x400")
+
+        # ==== СТИЛЬ ====
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("Treeview",
+                        background="#2b2b2b",
+                        foreground="white",
+                        rowheight=28,
+                        fieldbackground="#2b2b2b",
+                        font=("Arial", 12))
+        style.map("Treeview", background=[("selected", "#1f6aa5")])
+
+        # ==== ТАБЛИЦА ====
+        columns = ("serial", "tester", "time", "status")
+
+        tree = ttk.Treeview(window, columns=columns, show="headings")
+
+        tree.heading("serial", text="Серийный номер")
+        tree.heading("tester", text="Тестер")
+        tree.heading("time", text="Время записи")
+        tree.heading("status", text="Статус")
+
+        tree.column("serial", width=200, anchor="center")
+        tree.column("tester", width=120, anchor="center")
+        tree.column("time", width=220, anchor="center")
+        tree.column("status", width=100, anchor="center")
+
+        # Цвет статуса
+        tree.tag_configure("PASS", foreground="lightgreen")
+        tree.tag_configure("FAIL", foreground="red")
+
+        # ==== ДАННЫЕ ====
+        for s in sessions:
+            status = s["overall_status"]
+            tree.insert(
+                "",
+                "end",
+                values=(
+                    s["laptop_serial"],
+                    s["tester_name"],
+                    s["finished_at"].strftime("%Y-%m-%d %H:%M"),
+                    status
+                ),
+                tags=(status,)
+            )
+
+        tree.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Скролл
+        scrollbar = ttk.Scrollbar(window, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+    def search_device(self):
+        serial = self.search_entry.get().strip()
+        if not serial:
+            messagebox.showerror("Ошибка", "Введите серийный номер")
+            return
+
+        session_row, audio_rows, usb_rows = get_session_by_serial(serial)
+
+        if not session_row:
+            messagebox.showinfo("Не найдено", "Устройство не найдено")
+            return
+
+        self.show_device_details(session_row, audio_rows, usb_rows)
+
+    def show_device_details(self, session_row, audio_rows, usb_rows):
+        window = ctk.CTkToplevel(self)
+        window.title(f"Информация об устройстве {session_row['laptop_serial']}")
+        window.geometry("900x600")
+
+        # ==== ОБЩАЯ ИНФА ====
+        info = (
+            f"Серийный номер: {session_row['laptop_serial']}\n"
+            f"Тестер: {session_row['tester_name']}\n"
+            f"Время теста: {session_row['finished_at']}\n"
+            f"Статус: {session_row['overall_status']}"
+        )
+
+        label = ctk.CTkLabel(window, text=info, justify="left")
+        label.pack(pady=10)
+
+        # ================= AUDIO TABLE =================
+        ctk.CTkLabel(window, text="AUDIO ТЕСТЫ").pack()
+
+        audio_tree = ttk.Treeview(
+            window,
+            columns=("device_name", "left_status", "right_status", "error"),
+            show="headings",
+            height=4
+        )
+
+        audio_tree.heading("device_name", text="Устройство")
+        audio_tree.heading("left_status", text="Левый канал")
+        audio_tree.heading("right_status", text="Правый канал")
+        audio_tree.heading("error", text="Ошибка")
+
+        audio_tree.tag_configure("PASS", foreground="lightgreen")
+        audio_tree.tag_configure("FAIL", foreground="red")
+
+        for row in audio_rows:
+            audio_tree.insert(
+                "",
+                "end",
+                values=(row["device_name"], row["left_status"], row["right_status"], row["error"]),
+                tags=(row["left_status"], row["right_status"])
+            )
+
+        audio_tree.pack(fill="x", padx=10, pady=5)
+
+        # ================= USB TABLE =================
+        ctk.CTkLabel(window, text="USB ТЕСТЫ").pack()
+
+        usb_tree = ttk.Treeview(
+            window,
+            columns=("drive", "write", "read", "status", "error"),
+            show="headings",
+            height=6
+        )
+
+        usb_tree.heading("drive", text="Диск")
+        usb_tree.heading("write", text="Запись MB/s")
+        usb_tree.heading("read", text="Чтение MB/s")
+        usb_tree.heading("status", text="Статус")
+        usb_tree.heading("error", text="Ошибка")
+
+        usb_tree.tag_configure("PASS", foreground="lightgreen")
+        usb_tree.tag_configure("FAIL", foreground="red")
+
+        for row in usb_rows:
+            usb_tree.insert(
+                "",
+                "end",
+                values=(
+                    row["drive"],
+                    row["write_speed"],
+                    row["read_speed"],
+                    row["status"],
+                    row["error"]
+                ),
+                tags=(row["status"],)
+            )
+
+        usb_tree.pack(fill="both", expand=True, padx=10, pady=5)
+
 
     # ================== ТЕСТЕР ==================
 
@@ -205,20 +378,10 @@ class MainWindow(ctk.CTk):
                                       summary + "\n\nСохранить результаты?")
 
         if confirm:
-            if all(r["status"] == "PASS" for r in self.session.usb_results):
-                save_usb_test(
-                    laptop_serial=self.session.serial_number,
-                    checksum_ok=True,
-                    status="PASS",
-                    error=None
-                )
-            else:
-                save_usb_test(
-                    laptop_serial=self.session.serial_number,
-                    checksum_ok=False,
-                    status="FAIL",
-                    error="Один или несколько USB тестов провалены"
-                )
+            save_usb_test(
+                laptop_serial=self.session.serial_number,
+                usb_results=self.session.usb_results
+            )
 
             save_audio_test(
                 laptop_serial=self.session.serial_number,
@@ -246,69 +409,3 @@ class MainWindow(ctk.CTk):
     def clear(self):
         for widget in self.winfo_children():
             widget.destroy()
-
-# ================== ПАНЕЛЬ ДЛЯ АДМИНА ==================
-
-class AdminPanel(ctk.CTkToplevel):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.title("Панель администратора")
-        self.geometry("700x500")
-        
-        # ------------------ Поиск ------------------
-        self.label_search = ctk.CTkLabel(self, text="Серийный номер:")
-        self.label_search.pack(pady=(10, 0))
-        
-        self.entry_search = ctk.CTkEntry(self, placeholder_text="Введите серийный номер", width=200)
-        self.entry_search.pack(pady=5)
-        
-        self.btn_search = ctk.CTkButton(self, text="Поиск", command=self.search_serial)
-        self.btn_search.pack(pady=(0, 10))
-        
-        # ------------------ Кнопка все устройства ------------------
-        self.btn_all = ctk.CTkButton(self, text="Посмотреть все устройства", command=self.show_all)
-        self.btn_all.pack(pady=(0, 10))
-        
-        # ------------------ Поле для вывода ------------------
-        self.text_area = ctk.CTkTextbox(self, width=650, height=350)
-        self.text_area.pack(pady=5)
-    
-    # ------------------ Функции ------------------
-    def show_all(self):
-        self.text_area.delete("1.0", ctk.END)
-        sessions = get_all_sessions()
-        if not sessions:
-            self.text_area.insert(ctk.END, "Нет данных.\n")
-            return
-        for s in sessions:
-            self.text_area.insert(ctk.END, f"Серийный номер: {s['laptop_serial']}\n")
-            self.text_area.insert(ctk.END, f"Тестер: {s['tester_name']}\n")
-            self.text_area.insert(ctk.END, f"Статус: {s['overall_status']}\n")
-            self.text_area.insert(ctk.END, "--------------------------\n")
-    
-    def search_serial(self):
-        serial = self.entry_search.get().strip()
-        if not serial:
-            messagebox.showwarning("Ошибка", "Введите серийный номер")
-            return
-        self.text_area.delete("1.0", ctk.END)
-        session = get_session_by_serial(serial)
-        if not session:
-            self.text_area.insert(ctk.END, f"Данные для серийного номера {serial} не найдены.\n")
-            return
-        # выводим общую информацию
-        self.text_area.insert(ctk.END, f"Серийный номер: {session['laptop_serial']}\n")
-        self.text_area.insert(ctk.END, f"Тестер: {session['tester_name']}\n")
-        self.text_area.insert(ctk.END, f"Статус сессии: {session['overall_status']}\n\n")
-        # USB тесты
-        self.text_area.insert(ctk.END, "USB тесты:\n")
-        for usb in session['usb_tests']:
-            self.text_area.insert(ctk.END, f"  {usb['drive']}: {usb['status']}\n")
-        # Аудио тесты
-        self.text_area.insert(ctk.END, "\nАудио тесты:\n")
-        audio = session['audio_tests']
-        if audio:
-            self.text_area.insert(ctk.END, f"  Device: {audio['device_name']}\n")
-            self.text_area.insert(ctk.END, f"  LEFT: {audio['left_status']}\n")
-            self.text_area.insert(ctk.END, f"  RIGHT: {audio['right_status']}\n")
-        self.text_area.insert(ctk.END, "--------------------------\n")

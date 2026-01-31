@@ -19,8 +19,11 @@ test_sessions = Table(
 # ------------------- USB тесты -------------------
 usb_tests = Table(
     "usb_tests", metadata,
-    Column("laptop_serial", Text, primary_key=True),  # привязка по серийному номеру
-    Column("checksum_ok", Boolean),
+    Column("id", Integer, primary_key=True),
+    Column("laptop_serial", Text, index=True),  # привязка по серийному номеру
+    Column("drive", Text),                      # какой USB
+    Column("write_speed", Integer),
+    Column("read_speed", Integer),
     Column("status", Text, nullable=False),
     Column("error", Text),
     CheckConstraint("status IN ('PASS','FAIL')", name="check_usb_status")

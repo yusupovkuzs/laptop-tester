@@ -43,15 +43,17 @@ def test_usb_drive(mountpoint: str) -> dict:
         result = {
             "drive": mountpoint,
             "status": "PASS",
-            "write_speed_mb_s": round(TEST_FILE_SIZE_MB / write_time, 2),
-            "read_speed_mb_s": round(TEST_FILE_SIZE_MB / read_time, 2),
-            "checksum_match": sha256(data) == sha256(read_data)
+            "write_speed": round(TEST_FILE_SIZE_MB / write_time, 2),
+            "read_speed": round(TEST_FILE_SIZE_MB / read_time, 2),
+            "error": None
         }
 
     except Exception as e:
         result = {
             "drive": mountpoint,
             "status": "FAIL",
+            "write_speed": 0,
+            "read_speed": 0,
             "error": str(e)
         }
 

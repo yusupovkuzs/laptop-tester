@@ -20,6 +20,11 @@ wheels/
 .installed.cfg
 *.egg
 
+# exe
+build/
+dist/
+.spec
+
 # Environment
 .env
 .venv
