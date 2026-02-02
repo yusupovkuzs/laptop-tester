@@ -10,25 +10,40 @@ SAMPLES_DIR = os.path.join(BASE_DIR, "samples")
 
 def list_output_devices():
     """
-    Возвращает список доступных устройств вывода:
-    - с >= 2 каналами
-    - только DirectSound
+    Возвращает список реальных устройств вывода:
+    - >= 2 каналов
+    - DirectSound
+    - без виртуальных / системных драйверов
     """
     devices = sd.query_devices()
     hostapis = sd.query_hostapis()
     result = []
 
+    EXCLUDE = [
+        "Primary Sound Driver",
+        "Первичный звуковой драйвер",
+        "Microsoft Sound Mapper",
+        "Mapper"
+    ]
+
     for idx, dev in enumerate(devices):
         hostapi_name = hostapis[dev["hostapi"]]["name"]
-        if dev["max_output_channels"] >= 2 and "DirectSound" in hostapi_name:
+        name = dev["name"]
+
+        if (
+            dev["max_output_channels"] >= 2
+            and "DirectSound" in hostapi_name
+            and not any(bad in name for bad in EXCLUDE)
+        ):
             result.append({
                 "id": idx,
-                "name": dev["name"],
+                "name": name,
                 "hostapi": hostapi_name,
                 "default_samplerate": int(dev["default_samplerate"])
             })
 
     return result
+
 
 def play_sample(sample_name: str, device=None):
     """

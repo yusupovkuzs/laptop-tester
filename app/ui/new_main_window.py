@@ -8,7 +8,6 @@ import threading
 from tkinter import messagebox
 from app.db.repository import finish_test_session, save_usb_test, save_audio_test, get_all_sessions, get_session_by_serial 
 
-
 class MainWindow(ctk.CTk):
 
     def __init__(self):
@@ -65,7 +64,7 @@ class MainWindow(ctk.CTk):
         ctk.CTkLabel(self, text="Админ панель", font=("Arial", 20)).pack(pady=20)
 
         ctk.CTkButton(self, text="Показать все протестированные устройства", command=self.show_all_devices).pack(pady=10)
-        self.search_entry = ctk.CTkEntry(self, placeholder_text="Введите серийный номер")
+        self.search_entry = ctk.CTkEntry(self, placeholder_text="Введите серийный номер", width=300)
         self.search_entry.pack(pady=5)
 
         self.search_btn = ctk.CTkButton(
@@ -154,7 +153,12 @@ class MainWindow(ctk.CTk):
 
         self.show_device_details(session_row, audio_rows, usb_rows)
 
-    def show_device_details(self, session_row, audio_rows, usb_rows):
+    def status_tag(self, left, right):
+        if left == "PASS" and right == "PASS":
+            return "pass_row"
+        return "fail_row"
+
+    def show_device_details(self, session_row, audio_row, usb_rows):
         window = ctk.CTkToplevel(self)
         window.title(f"Информация об устройстве {session_row['laptop_serial']}")
         window.geometry("900x600")
@@ -171,32 +175,37 @@ class MainWindow(ctk.CTk):
         label.pack(pady=10)
 
         # ================= AUDIO TABLE =================
-        ctk.CTkLabel(window, text="AUDIO ТЕСТЫ").pack()
+        
+        tree = ttk.Treeview(window, columns=("device", "left", "right"), show="headings", height=2)
 
-        audio_tree = ttk.Treeview(
-            window,
-            columns=("device_name", "left_status", "right_status", "error"),
-            show="headings",
-            height=4
+        tree.tag_configure("pass_row", background="#d4edda")   # светло-зелёный
+        tree.tag_configure("fail_row", background="#f8d7da")   # светло-красный
+
+        
+        tree.heading("device", text="Устройство вывода")
+        tree.heading("left", text="Левый канал")
+        tree.heading("right", text="Правый канал")
+
+        tree.column("device", width=180, anchor="center")
+        tree.column("left", width=120, anchor="center")
+        tree.column("right", width=120, anchor="center")
+
+        tree.insert(
+            "",
+            "end",
+            values=("Наушники", audio_row.left_headphones or "—", audio_row.right_headphones or "—"),
+            tags=(self.status_tag(audio_row.left_headphones, audio_row.right_headphones),)
         )
 
-        audio_tree.heading("device_name", text="Устройство")
-        audio_tree.heading("left_status", text="Левый канал")
-        audio_tree.heading("right_status", text="Правый канал")
-        audio_tree.heading("error", text="Ошибка")
+        tree.insert(
+            "",
+            "end",
+            values=("Динамики", audio_row.left_speakers or "—", audio_row.right_speakers or "—"),
+            tags=(self.status_tag(audio_row.left_speakers, audio_row.right_speakers),)
+        )
 
-        audio_tree.tag_configure("PASS", foreground="lightgreen")
-        audio_tree.tag_configure("FAIL", foreground="red")
 
-        for row in audio_rows:
-            audio_tree.insert(
-                "",
-                "end",
-                values=(row["device_name"], row["left_status"], row["right_status"], row["error"]),
-                tags=(row["left_status"], row["right_status"])
-            )
-
-        audio_tree.pack(fill="x", padx=10, pady=5)
+        tree.pack(pady=10)
 
         # ================= USB TABLE =================
         ctk.CTkLabel(window, text="USB ТЕСТЫ").pack()
@@ -246,6 +255,9 @@ class MainWindow(ctk.CTk):
         self.serial_entry.pack(pady=10)
         self.serial_entry.bind("<Return>", self.start_testing)
 
+        ctk.CTkLabel(self, text="Подключите все USB устройства и наушники перед началом теста",
+                     font=("Arial", 12, "bold")).pack(pady=10)
+
     def start_testing(self, event=None):
         serial = self.serial_entry.get().strip()
 
@@ -265,7 +277,6 @@ class MainWindow(ctk.CTk):
 
         # --- USB ТЕСТ ---
         usb_results = run_usb_tests()
-        print(usb_results)
         
         for res in usb_results:
             if res.get("status") == "NO_USB_FOUND":
@@ -277,14 +288,15 @@ class MainWindow(ctk.CTk):
 
             self.session.add_usb_result(res)
 
-        print("USB TEST RESULTS:", self.session.usb_results)
         self.status_label.configure(text="USB тест завершён", text_color="green")
 
         # --- КНОПКИ АУДИО ---
         self.show_audio_controls()
         self.audio_results = {
-            "left": None,
-            "right": None
+            "left_speakers": None,
+            "right_speakers": None,
+            "left_headphones": None,
+            "right_headphones": None
         }
 
     # ================== АУДИО ==================
@@ -295,15 +307,18 @@ class MainWindow(ctk.CTk):
             channel_text = "левом"
         else:
             channel_text = "правом"
-
+        
+        key = f"{channel}_speakers"
+        if self.selected_device.get().startswith("Наушники"):
+            key = f"{channel}_headphones"
+        
         def _play():
             try:
                 play_sample(sample_file, device=device_id)
                 self.after(0, lambda: self.ask_audio_result(channel, channel_text))
-                self.audio_results[channel] = "done"
+                self.audio_results[key] = "done"
             except Exception as e:
                 self.after(0, lambda: messagebox.showerror("Ошибка аудио", str(e)))
-                self.audio_results[channel] = "done"
 
         threading.Thread(target=_play, daemon=True).start()
 
@@ -364,15 +379,19 @@ class MainWindow(ctk.CTk):
     def finish_tests(self):
         summary = self.session.build_summary()
 
-        left_done = self.audio_results.get("left") is not None
-        right_done = self.audio_results.get("right") is not None
+        left_speakers_done = self.audio_results.get("left_speakers") is not None
+        right_speakers_done = self.audio_results.get("right_speakers") is not None
+        left_headphones_done = self.audio_results.get("left_headphones") is not None
+        right_headphones_done = self.audio_results.get("right_headphones") is not None
 
-        if not left_done or not right_done:
-            messagebox.showwarning(
-                "Тест не завершён",
-                "Необходимо проверить оба аудио канала (LEFT и RIGHT)"
-            )
-            return
+
+        print(left_speakers_done, right_speakers_done, left_headphones_done, right_headphones_done)
+        if not left_speakers_done or not right_speakers_done or not left_headphones_done or not right_headphones_done:
+                messagebox.showwarning(
+                    "Тест не завершён",
+                    "Необходимо проверить оба аудио канала (LEFT и RIGHT) и в наушниках, и в колонках."
+                )
+                return
 
         confirm = messagebox.askyesno("Итоги тестов",
                                       summary + "\n\nСохранить результаты?")
@@ -385,9 +404,10 @@ class MainWindow(ctk.CTk):
 
             save_audio_test(
                 laptop_serial=self.session.serial_number,
-                device_name=", ".join({r["device"] for r in self.session.audio_results}),
-                left_status=next((r["status"] for r in self.session.audio_results if r["channel"] == "left"), "FAIL"),
-                right_status=next((r["status"] for r in self.session.audio_results if r["channel"] == "right"), "FAIL"),
+                left_speakers=next((r["status"] for r in self.session.audio_results if r["channel"] == "left" and r["device"].startswith("Динамики")), "FAIL"),
+                right_speakers=next((r["status"] for r in self.session.audio_results if r["channel"] == "right" and r["device"].startswith("Динамики")), "FAIL"),
+                left_headphones=next((r["status"] for r in self.session.audio_results if r["channel"] == "left" and r["device"].startswith("Наушники")), "FAIL"),
+                right_headphones=next((r["status"] for r in self.session.audio_results if r["channel"] == "right" and r["device"].startswith("Наушники")), "FAIL"),
                 error=None
             )
 

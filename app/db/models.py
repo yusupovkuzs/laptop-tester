@@ -33,10 +33,13 @@ usb_tests = Table(
 audio_tests = Table(
     "audio_tests", metadata,
     Column("laptop_serial", Text, primary_key=True),  # привязка по серийному номеру
-    Column("device_name", Text),
-    Column("left_status", Text),
-    Column("right_status", Text),
+    Column("left_speakers", Text),
+    Column("right_speakers", Text),
+    Column("left_headphones", Text),
+    Column("right_headphones", Text),
     Column("error", Text),
-    CheckConstraint("left_status IN ('PASS','FAIL')", name="check_audio_left_status"),
-    CheckConstraint("right_status IN ('PASS','FAIL')", name="check_audio_right_status")
+    CheckConstraint("left_speakers IN ('PASS','FAIL')", name="check_audio_left_speakers_status"),
+    CheckConstraint("right_speakers IN ('PASS','FAIL')", name="check_audio_right_speakers_status"),
+    CheckConstraint("left_headphones IN ('PASS','FAIL')", name="check_audio_left_headphones_status"),
+    CheckConstraint("right_headphones IN ('PASS','FAIL')", name="check_audio_right_headphones_status")
 )

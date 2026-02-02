@@ -25,10 +25,15 @@ class TestSession:
     # ================= AUDIO =================
 
     def add_audio_result(self, channel, status, device):
+        for r in self.audio_results:
+            if r["device"] == device and r["channel"] == channel:
+                r["status"] = status
+                return
+            
         self.audio_results.append({
+            "device": device,
             "channel": channel,
-            "status": status,
-            "device": device
+            "status": status
         })
 
 
@@ -39,7 +44,7 @@ class TestSession:
         usb_fail = sum(1 for r in self.usb_results if r["status"] == "FAIL")
 
         audio_summary = "\n".join(
-            f"{r['channel'].upper()} — {r['status']}"
+            f"{r['device']}: {r['channel'].upper()} — {r['status']}"
             for r in self.audio_results
         )
 

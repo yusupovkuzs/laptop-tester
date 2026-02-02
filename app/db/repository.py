@@ -26,21 +26,23 @@ def save_usb_test(laptop_serial,  usb_results: list[dict]):
             )
 
 # Сохранение результатов аудио теста
-def save_audio_test(laptop_serial, device_name, left_status, right_status, error=None):
+def save_audio_test(laptop_serial, left_speakers, right_speakers, left_headphones, right_headphones, error=None):
     session = SessionLocal()
     try:
         stmt = insert(audio_tests).values(
             laptop_serial=laptop_serial,
-            device_name=device_name,
-            left_status=left_status,
-            right_status=right_status,
+            left_headphones=left_headphones,
+            right_headphones=right_headphones,
+            left_speakers=left_speakers,
+            right_speakers=right_speakers,
             error=error
         ).on_conflict_do_update(
             index_elements=['laptop_serial'],
             set_={
-                "device_name": device_name,
-                "left_status": left_status,
-                "right_status": right_status,
+                "left_headphones": left_headphones,
+                "right_headphones": right_headphones,
+                "left_speakers": left_speakers,
+                "right_speakers": right_speakers,
                 "error": error
             }
         )
@@ -77,7 +79,7 @@ def get_session_by_serial(laptop_serial):
 
         audio_rows = db.execute(
             audio_tests.select().where(audio_tests.c.laptop_serial == laptop_serial)
-        ).mappings().all()
+        ).fetchone()
 
         usb_rows = db.execute(
             usb_tests.select().where(usb_tests.c.laptop_serial == laptop_serial)
