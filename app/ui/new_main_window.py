@@ -309,7 +309,7 @@ class MainWindow(ctk.CTk):
             channel_text = "правом"
         
         key = f"{channel}_speakers"
-        if self.selected_device.get().startswith("Наушники"):
+        if self.selected_device.get().startswith("Наушники") or self.selected_device.get().startswith("Headphones"):
             key = f"{channel}_headphones"
         
         def _play():
@@ -379,35 +379,34 @@ class MainWindow(ctk.CTk):
     def finish_tests(self):
         summary = self.session.build_summary()
 
-        left_speakers_done = self.audio_results.get("left_speakers") is not None
-        right_speakers_done = self.audio_results.get("right_speakers") is not None
-        left_headphones_done = self.audio_results.get("left_headphones") is not None
-        right_headphones_done = self.audio_results.get("right_headphones") is not None
+        # left_speakers_done = self.audio_results.get("left_speakers") is not None
+        # right_speakers_done = self.audio_results.get("right_speakers") is not None
+        # left_headphones_done = self.audio_results.get("left_headphones") is not None
+        # right_headphones_done = self.audio_results.get("right_headphones") is not None
 
 
-        print(left_speakers_done, right_speakers_done, left_headphones_done, right_headphones_done)
-        if not left_speakers_done or not right_speakers_done or not left_headphones_done or not right_headphones_done:
-                messagebox.showwarning(
-                    "Тест не завершён",
-                    "Необходимо проверить оба аудио канала (LEFT и RIGHT) и в наушниках, и в колонках."
-                )
-                return
+        # if not left_speakers_done or not right_speakers_done or not left_headphones_done or not right_headphones_done:
+        #         messagebox.showwarning(
+        #             "Тест не завершён",
+        #             "Необходимо проверить оба аудио канала (LEFT и RIGHT) и в наушниках, и в колонках."
+        #         )
+        #         return
 
         confirm = messagebox.askyesno("Итоги тестов",
                                       summary + "\n\nСохранить результаты?")
 
         if confirm:
-            save_usb_test(
+            save_usb_test( 
                 laptop_serial=self.session.serial_number,
                 usb_results=self.session.usb_results
             )
 
             save_audio_test(
                 laptop_serial=self.session.serial_number,
-                left_speakers=next((r["status"] for r in self.session.audio_results if r["channel"] == "left" and r["device"].startswith("Динамики")), "FAIL"),
-                right_speakers=next((r["status"] for r in self.session.audio_results if r["channel"] == "right" and r["device"].startswith("Динамики")), "FAIL"),
-                left_headphones=next((r["status"] for r in self.session.audio_results if r["channel"] == "left" and r["device"].startswith("Наушники")), "FAIL"),
-                right_headphones=next((r["status"] for r in self.session.audio_results if r["channel"] == "right" and r["device"].startswith("Наушники")), "FAIL"),
+                left_speakers=next((r["status"] for r in self.session.audio_results if r["channel"] == "left" and (r["device"].startswith("Динамики") or r["device"].startswith("Speakers"))), "FAIL"),
+                right_speakers=next((r["status"] for r in self.session.audio_results if r["channel"] == "right" and (r["device"].startswith("Динамики") or r["device"].startswith("Speakers"))), "FAIL"),
+                left_headphones=next((r["status"] for r in self.session.audio_results if r["channel"] == "left" and (r["device"].startswith("Наушники") or r["device"].startswith("Headphones"))), "FAIL"),
+                right_headphones=next((r["status"] for r in self.session.audio_results if r["channel"] == "right" and (r["device"].startswith("Наушники") or r["device"].startswith("Headphones"))), "FAIL"),
                 error=None
             )
 

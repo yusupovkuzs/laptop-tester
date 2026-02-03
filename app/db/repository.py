@@ -2,7 +2,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import delete, select
 from app.db.connection import SessionLocal, engine
 from app.db.models import test_sessions, usb_tests, audio_tests
-from app.db.models import metadata, test_sessions, usb_tests, audio_tests
+from app.db.models import test_sessions, usb_tests, audio_tests
 
 # Сохранение результатов USB теста
 def save_usb_test(laptop_serial,  usb_results: list[dict]):

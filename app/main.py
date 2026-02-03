@@ -2,7 +2,7 @@ from app.db.init_db import init_db
 from app.ui.new_main_window import MainWindow
 
 def main():
-    init_db()
+    # init_db()
     app = MainWindow()
     app.mainloop()
 
